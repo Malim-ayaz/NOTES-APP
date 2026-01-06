@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Notes from './pages/Notes';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -38,11 +39,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <div className="App">
-        <AppRoutes />
-      </div>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <div className="App">
+          <AppRoutes />
+        </div>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

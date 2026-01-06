@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getToken, setToken, removeToken } from '../utils/token';
+import { getAccessToken, setTokens, removeTokens, getRefreshToken } from '../utils/token';
+import { logoutAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -9,7 +10,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Check if user is already logged in
-    const token = getToken();
+    const token = getAccessToken();
     if (token) {
       // Token exists, but we don't validate it here
       // The API will validate it on the next request
@@ -20,14 +21,23 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = (userData, token) => {
-    setToken(token);
+  const login = (userData, accessToken, refreshToken) => {
+    setTokens(accessToken, refreshToken);
     setUser(userData);
   };
 
-  const logout = () => {
-    removeToken();
-    setUser(null);
+  const logout = async () => {
+    try {
+      const refreshToken = getRefreshToken();
+      if (refreshToken) {
+        await logoutAPI(refreshToken);
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      removeTokens();
+      setUser(null);
+    }
   };
 
   const updateUser = (userData) => {
