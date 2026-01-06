@@ -18,7 +18,7 @@ function Login() {
 
     try {
       const data = await authAPI.login(email, password);
-      login(data.user, data.token);
+      login(data.user, data.accessToken, data.refreshToken);
       navigate('/notes');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');

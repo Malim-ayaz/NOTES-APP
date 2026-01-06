@@ -1,52 +1,61 @@
-# Notes App Backend
+# Notes API - Backend
 
-A RESTful API backend for a Notes application built with Node.js, Express, SQLite, and JWT authentication.
+A production-ready RESTful API for managing notes with user authentication, built with Node.js, Express, and SQLite.
 
 ## Features
 
-- User authentication (signup/login) with JWT tokens
-- Secure password hashing using bcryptjs
-- CRUD operations for notes
-- Request validation using express-validator
-- SQLite database for data persistence
-- CORS enabled for frontend integration
+- JWT Authentication with Refresh Tokens
+- Rate Limiting (Protection against brute force attacks)
+- Input Validation & Sanitization
+- Search & Pagination
+- API Documentation (Swagger/OpenAPI)
+- Comprehensive Error Handling
+- Request Logging
+- Security Headers (Helmet.js)
+- Database Optimization (Indexes, WAL mode)
 
-## Prerequisites
+## Quick Start
 
-- Node.js (v14 or higher)
+### Prerequisites
+- Node.js v18 or higher
 - npm or yarn
 
-## Installation
+### Installation
 
-1. Navigate to the backend directory:
-```bash
-cd backend
-```
-
-2. Install dependencies:
+1. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Create a `.env` file in the backend directory (optional, defaults are provided):
+2. Create `.env` file:
+```bash
+cp .env.example .env
+```
+
+3. Configure environment variables:
 ```env
+NODE_ENV=development
 PORT=3001
-JWT_SECRET=your-secret-key-change-in-production
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+FRONTEND_URL=http://localhost:3000
 ```
 
-## Running the Server
-
-### Development Mode (with auto-reload):
+4. Start the server:
 ```bash
+# Development mode (with nodemon)
 npm run dev
-```
 
-### Production Mode:
-```bash
+# Production mode
 npm start
 ```
 
-The server will start on `http://localhost:3001` (or the PORT specified in your .env file).
+The server will start on `http://localhost:3001`
+
+## API Documentation
+
+Once the server is running, visit:
+- **Swagger UI**: `http://localhost:3001/api-docs`
+- **Health Check**: `http://localhost:3001/health`
 
 ## API Endpoints
 
@@ -60,7 +69,7 @@ Create a new user account.
 {
   "username": "johndoe",
   "email": "john@example.com",
-  "password": "password123"
+  "password": "SecurePass123"
 }
 ```
 
@@ -68,7 +77,8 @@ Create a new user account.
 ```json
 {
   "message": "User created successfully",
-  "token": "jwt-token-here",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "abc123...",
   "user": {
     "id": 1,
     "username": "johndoe",
@@ -84,7 +94,7 @@ Login with email and password.
 ```json
 {
   "email": "john@example.com",
-  "password": "password123"
+  "password": "SecurePass123"
 }
 ```
 
@@ -92,7 +102,8 @@ Login with email and password.
 ```json
 {
   "message": "Login successful",
-  "token": "jwt-token-here",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "abc123...",
   "user": {
     "id": 1,
     "username": "johndoe",
@@ -101,11 +112,38 @@ Login with email and password.
 }
 ```
 
-### Notes
+#### POST /auth/refresh
+Refresh access token using refresh token.
 
-All note endpoints require authentication. Include the JWT token in the Authorization header:
+**Request Body:**
+```json
+{
+  "refreshToken": "abc123..."
+}
 ```
-Authorization: Bearer <your-jwt-token>
+
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### POST /auth/logout
+Logout and invalidate refresh token.
+
+**Request Body:**
+```json
+{
+  "refreshToken": "abc123..."
+}
+```
+
+### Notes (Requires Authentication)
+
+All note endpoints require authentication. Include the access token in the Authorization header:
+```
+Authorization: Bearer <accessToken>
 ```
 
 #### POST /notes
@@ -115,7 +153,7 @@ Create a new note.
 ```json
 {
   "title": "My First Note",
-  "content": "This is the content of my note"
+  "content": "This is the content of my note."
 }
 ```
 
@@ -125,31 +163,49 @@ Create a new note.
   "id": 1,
   "user_id": 1,
   "title": "My First Note",
-  "content": "This is the content of my note",
-  "created_at": "2024-01-01 12:00:00",
-  "updated_at": "2024-01-01 12:00:00"
+  "content": "This is the content of my note.",
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
 }
 ```
 
 #### GET /notes
-Get all notes for the authenticated user.
+Get paginated notes with optional search.
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Notes per page (default: 10, max: 100)
+- `search` (optional): Search term for title or content
+
+**Example:**
+```
+GET /notes?page=1&limit=10&search=important
+```
 
 **Response:**
 ```json
-[
-  {
-    "id": 1,
-    "user_id": 1,
-    "title": "My First Note",
-    "content": "This is the content of my note",
-    "created_at": "2024-01-01 12:00:00",
-    "updated_at": "2024-01-01 12:00:00"
+{
+  "notes": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "title": "Important Note",
+      "content": "Content here...",
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "updated_at": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 25,
+    "totalPages": 3
   }
-]
+}
 ```
 
 #### PUT /notes/:id
-Update an existing note.
+Update a note.
 
 **Request Body:**
 ```json
@@ -166,8 +222,8 @@ Update an existing note.
   "user_id": 1,
   "title": "Updated Title",
   "content": "Updated content",
-  "created_at": "2024-01-01 12:00:00",
-  "updated_at": "2024-01-01 13:00:00"
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T01:00:00.000Z"
 }
 ```
 
@@ -181,9 +237,23 @@ Delete a note.
 }
 ```
 
+## Security Features
+
+### Rate Limiting
+- **Auth endpoints**: 5 requests per 15 minutes per IP
+- **General API**: 100 requests per 15 minutes per IP
+
+### Password Requirements
+- Minimum 6 characters
+- Must contain at least one uppercase letter, one lowercase letter, and one number
+
+### Token Expiry
+- **Access Token**: 15 minutes
+- **Refresh Token**: 7 days
+
 ## Error Responses
 
-All endpoints may return error responses in the following format:
+All errors follow this format:
 
 ```json
 {
@@ -191,50 +261,78 @@ All endpoints may return error responses in the following format:
 }
 ```
 
-Or for validation errors:
-```json
-{
-  "errors": [
-    {
-      "msg": "Validation error message",
-      "param": "fieldName",
-      "location": "body"
-    }
-  ]
-}
-```
-
 Common HTTP status codes:
-- `400` - Bad Request (validation errors)
-- `401` - Unauthorized (missing or invalid token)
-- `403` - Forbidden (invalid token or user not found)
-- `404` - Not Found (note not found)
-- `500` - Internal Server Error
+- `200`: Success
+- `201`: Created
+- `400`: Bad Request (validation errors)
+- `401`: Unauthorized (invalid/expired token)
+- `403`: Forbidden
+- `404`: Not Found
+- `429`: Too Many Requests (rate limit exceeded)
+- `500`: Internal Server Error
 
 ## Testing
 
-Run tests with:
+Run tests:
 ```bash
 npm test
 ```
 
-## Database
+Test coverage includes:
+- Authentication endpoints
+- Notes CRUD operations
+- Error handling
+- Validation
 
-The application uses SQLite database (`notes.db`) which is automatically created on first run. The database file will be created in the backend directory.
+## Database Schema
 
-## Project Structure
+### users
+- `id` (INTEGER PRIMARY KEY)
+- `username` (TEXT UNIQUE NOT NULL)
+- `email` (TEXT UNIQUE NOT NULL)
+- `password` (TEXT NOT NULL) - Hashed with bcrypt
+- `created_at` (DATETIME)
 
+### notes
+- `id` (INTEGER PRIMARY KEY)
+- `user_id` (INTEGER NOT NULL) - Foreign key to users
+- `title` (TEXT NOT NULL)
+- `content` (TEXT NOT NULL)
+- `created_at` (DATETIME)
+- `updated_at` (DATETIME)
+
+### refresh_tokens
+- `id` (INTEGER PRIMARY KEY)
+- `user_id` (INTEGER NOT NULL) - Foreign key to users
+- `token` (TEXT UNIQUE NOT NULL)
+- `expires_at` (DATETIME NOT NULL)
+- `created_at` (DATETIME)
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment (development/production) | `development` |
+| `PORT` | Server port | `3001` |
+| `JWT_SECRET` | Secret key for JWT signing | Required |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` |
+
+## Production Deployment
+
+### Using Docker
+
+```bash
+docker build -t notes-api .
+docker run -p 3001:3001 -e JWT_SECRET=your-secret notes-api
 ```
-backend/
-├── database.js          # Database initialization and connection
-├── server.js            # Express server setup
-├── middleware/
-│   └── auth.js         # JWT authentication middleware
-├── routes/
-│   ├── auth.js         # Authentication routes
-│   └── notes.js        # Notes CRUD routes
-├── tests/              # Test files
-├── package.json
-└── README.md
-```
 
+### Environment Setup
+
+1. Set `NODE_ENV=production`
+2. Use a strong `JWT_SECRET`
+3. Configure `FRONTEND_URL` for your frontend domain
+4. Consider using a production database (PostgreSQL)
+
+## License
+
+ISC

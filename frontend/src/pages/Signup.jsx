@@ -19,11 +19,11 @@ function Signup() {
 
     try {
       const data = await authAPI.signup(username, email, password);
-      login(data.user, data.token);
+      login(data.user, data.accessToken, data.refreshToken);
       navigate('/notes');
     } catch (err) {
       const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.errors?.[0]?.msg || 
+                          err.response?.data?.errors?.[0]?.message || 
                           'Signup failed. Please try again.';
       setError(errorMessage);
     } finally {
